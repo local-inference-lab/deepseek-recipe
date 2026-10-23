@@ -130,6 +130,7 @@ impl PromptEncoding for DeepseekV4Encoding {
         let thinking_mode = conversation.thinking_mode;
 
         let mut prompt = prompt!("{}", self.components.special(SpecialToken::Bos));
+        let mut message_boundaries = vec![prompt.as_str().len()];
         if thinking_mode {
             match conversation.reasoning_effort {
                 Some(ReasoningEffort::Low) => {}
@@ -199,6 +200,7 @@ impl PromptEncoding for DeepseekV4Encoding {
                     prompt += prompt!("{latest_reminder}{content}");
                 }
             }
+            message_boundaries.push(prompt.as_str().len());
             previous_is_user = matches!(message, InputMessage::User { .. });
             previous_is_tool = matches!(message, InputMessage::Tool { .. });
         }
@@ -215,7 +217,7 @@ impl PromptEncoding for DeepseekV4Encoding {
             let dsml = self.components.special(SpecialToken::Dsml);
             prompt += prompt!("\n\n<{dsml}tool_calls>\n");
         }
-        into_rendered_prompt(prompt, &messages)
+        into_rendered_prompt(prompt, &messages, message_boundaries)
     }
 }
 

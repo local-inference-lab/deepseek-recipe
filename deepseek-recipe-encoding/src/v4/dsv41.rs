@@ -286,6 +286,7 @@ impl PromptEncoding for DeepseekV41Encoding {
         let drop_thinking = !renders_tool_prompt;
 
         let mut prompt = prompt!("{}", self.components.special(SpecialToken::Bos));
+        let mut message_boundaries = vec![prompt.as_str().len()];
         for index in 0..messages.len() {
             prompt += self.render_message(
                 index,
@@ -294,6 +295,7 @@ impl PromptEncoding for DeepseekV41Encoding {
                 conversation.reasoning_effort,
                 drop_thinking,
             );
+            message_boundaries.push(prompt.as_str().len());
         }
         if !is_prefix_continuation(&messages) {
             let assistant = self.components.special(SpecialToken::Assistant);
@@ -308,7 +310,7 @@ impl PromptEncoding for DeepseekV41Encoding {
             let dsml = self.components.special(SpecialToken::Dsml);
             prompt += prompt!("\n\n<{dsml}{TOOL_CALLS_BLOCK_NAME}>\n");
         }
-        into_rendered_prompt(prompt, &messages)
+        into_rendered_prompt(prompt, &messages, message_boundaries)
     }
 }
 

@@ -125,13 +125,18 @@ fn collect_image_sources(messages: &[InputMessage]) -> Vec<ImageSource> {
 ///
 /// The caller must pass the normalized messages that produced `prompt`, so
 /// that the image sources follow placeholder order.
-fn into_rendered_prompt(prompt: Prompt, messages: &[InputMessage]) -> RenderedPrompt {
+fn into_rendered_prompt(
+    prompt: Prompt,
+    messages: &[InputMessage],
+    message_boundaries: Vec<usize>,
+) -> RenderedPrompt {
     let image_sources = collect_image_sources(messages);
     let (prompt, special_ranges) = prompt.into_parts();
     RenderedPrompt {
         prompt,
         special_ranges,
         image_sources,
+        message_boundaries,
     }
 }
 

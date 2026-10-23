@@ -40,6 +40,9 @@ pub struct RenderedPrompt {
     pub special_ranges: Vec<Range<usize>>,
     /// Image sources in the order their placeholders appear in the prompt.
     pub image_sources: Vec<ImageSource>,
+    /// UTF-8 byte offsets after the BOS token and after each normalized message,
+    /// before any generation header.
+    pub message_boundaries: Vec<usize>,
 }
 
 /// Failure to encode a conversation.
