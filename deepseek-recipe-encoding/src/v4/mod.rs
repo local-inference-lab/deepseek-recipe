@@ -243,6 +243,8 @@ impl<T: EncodingV4> PromptEncoding for T {
             }
         }
         let mut prompt = BOS_TOKEN.to_string();
+        let mut message_boundaries = Vec::with_capacity(messages.len() + 1);
+        message_boundaries.push(prompt.len());
         for index in 0..messages.len() {
             prompt += &render_message(
                 self,
@@ -251,6 +253,7 @@ impl<T: EncodingV4> PromptEncoding for T {
                 conversation.thinking_mode,
                 conversation.reasoning_effort,
             );
+            message_boundaries.push(prompt.len());
         }
         prompt.push_str(ASSISTANT_SP_TOKEN);
         prompt.push_str(if conversation.thinking_mode {
@@ -277,6 +280,7 @@ impl<T: EncodingV4> PromptEncoding for T {
         RenderedPrompt {
             prompt,
             image_sources,
+            message_boundaries,
         }
     }
 }

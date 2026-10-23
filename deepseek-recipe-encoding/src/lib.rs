@@ -20,6 +20,8 @@ pub struct RenderedPrompt {
     pub prompt: String,
     /// Image sources in the order their placeholders appear in the prompt.
     pub image_sources: Vec<ImageSource>,
+    /// UTF-8 byte ends of complete normalized messages, before the generation header.
+    pub message_boundaries: Vec<usize>,
 }
 
 /// Failure to encode a conversation.
