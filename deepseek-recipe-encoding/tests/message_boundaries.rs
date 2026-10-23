@@ -31,7 +31,7 @@ fn merged_users_have_one_utf8_byte_boundary_before_the_generation_header() {
     };
     let prefix = format!("{BOS_TOKEN}{USER_SP_TOKEN}café\n\n你好");
     for encoder in encoders() {
-        let rendered = encoder.render_conversation(&conversation);
+        let rendered = encoder.render_conversation(&conversation, &[]);
         assert_eq!(
             rendered.prompt,
             format!("{prefix}{ASSISTANT_SP_TOKEN}{THINKING_END_TOKEN}")
@@ -72,7 +72,7 @@ fn tool_result_boundaries_follow_call_order_and_include_the_closing_wrapper() {
         ..Default::default()
     };
     for encoder in encoders() {
-        let rendered = encoder.render_conversation(&conversation);
+        let rendered = encoder.render_conversation(&conversation, &[]);
         let boundaries = &rendered.message_boundaries;
         assert_eq!(boundaries.len(), 4);
         assert_eq!(

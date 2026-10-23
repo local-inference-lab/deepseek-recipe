@@ -22,11 +22,15 @@ pub struct RenderedPrompt {
     pub image_sources: Vec<ImageSource>,
     /// UTF-8 byte ends of complete normalized messages, before the generation header.
     pub message_boundaries: Vec<usize>,
+    pub checkpoint_hints: Vec<usize>,
 }
 
 /// Failure to encode a conversation.
 #[derive(Debug, thiserror::Error)]
 pub enum EncodingError {
+    /// A numeric reasoning effort is outside the supported range.
+    #[error("reasoning effort score must be in 1..=100, got {0}")]
+    InvalidReasoningEffortScore(u8),
     /// The rendered prompt could not be encoded.
     #[error("failed to encode conversation: {0}")]
     Encode(String),
@@ -45,5 +49,9 @@ pub trait PromptEncoding {
     fn encode(&self, conversation: &Conversation) -> Result<Vec<u32>, EncodingError>;
 
     /// Render the conversation and the prefix for the next assistant turn.
-    fn render_conversation(&self, conversation: &Conversation) -> RenderedPrompt;
+    fn render_conversation(
+        &self,
+        conversation: &Conversation,
+        hints: &[(usize, usize)],
+    ) -> RenderedPrompt;
 }
