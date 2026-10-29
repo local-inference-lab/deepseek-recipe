@@ -10,7 +10,7 @@ use deepseek_recipe_core::tools::{ToolChoice, ToolDefinition};
 
 use super::{
     EncodingComponents, into_rendered_prompt, is_prefix_continuation, parse_tool_call_arguments,
-    renders_tool_prompt, tool_call_instructions, tool_definition_json,
+    renders_tool_prompt, tool_call_instructions, tool_definition_json, tool_result,
 };
 use crate::{EncodingError, PromptEncoding, RenderedPrompt, TokenizerEncoder};
 
@@ -18,12 +18,15 @@ const TOOL_CALLS_BLOCK_NAME: &str = " calls";
 const TOOL_CALL_TAG_NAME: &str = " invoke";
 const TOOL_PARAMETER_TAG_NAME: &str = " parameter";
 
-fn reasoning_effort_template(effort: Option<ReasoningEffort>) -> Prompt {
+fn reasoning_effort_template(effort: Option<ReasoningEffort>, score: Option<u8>) -> Prompt {
     let effort_score = match effort {
         Some(ReasoningEffort::Low) => "50",
         None | Some(ReasoningEffort::High) | Some(ReasoningEffort::Xhigh) => "75",
         Some(ReasoningEffort::Max) => "100",
     };
+    let effort_score = score
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| effort_score.to_owned());
     prompt!(
         "Reasoning Effort: {effort_score} (range 1-100, the higher the value, the more thorough the reasoning)\n\n"
     )
@@ -38,6 +41,7 @@ fn reasoning_effort_template(effort: Option<ReasoningEffort>) -> Prompt {
 #[derive(Clone)]
 pub struct DeepseekV41Encoding {
     components: EncodingComponents,
+    reasoning_effort_score: Option<u8>,
 }
 
 impl DeepseekV41Encoding {
@@ -49,6 +53,7 @@ impl DeepseekV41Encoding {
     pub fn new() -> Self {
         Self {
             components: EncodingComponents::new(),
+            reasoning_effort_score: None,
         }
     }
 
@@ -56,6 +61,7 @@ impl DeepseekV41Encoding {
     pub fn with_tokenizer(self, tokenizer: impl TokenizerEncoder + 'static) -> Self {
         Self {
             components: self.components.with_tokenizer(tokenizer),
+            reasoning_effort_score: self.reasoning_effort_score,
         }
     }
 
@@ -63,7 +69,17 @@ impl DeepseekV41Encoding {
     pub fn with_special_tokens(self, tokens: impl SpecialTokens + 'static) -> Self {
         Self {
             components: self.components.with_special_tokens(tokens),
+            reasoning_effort_score: self.reasoning_effort_score,
         }
+    }
+
+    /// Override the named effort with a score from 1 through 100.
+    pub fn with_reasoning_effort_score(mut self, score: u8) -> Result<Self, EncodingError> {
+        if !(1..=100).contains(&score) {
+            return Err(EncodingError::InvalidReasoningEffortScore(score));
+        }
+        self.reasoning_effort_score = Some(score);
+        Ok(self)
     }
 
     /// Render the tool prompt. Tool schemas are plain text.
@@ -142,7 +158,7 @@ impl DeepseekV41Encoding {
         let message = &messages[index];
         let previous = messages[..index].last();
         let reasoning_effort_prompt = if index == 0 && thinking_mode {
-            reasoning_effort_template(reasoning_effort)
+            reasoning_effort_template(reasoning_effort, self.reasoning_effort_score)
         } else {
             Prompt::new()
         };
@@ -189,7 +205,7 @@ impl DeepseekV41Encoding {
             }
             InputMessage::Tool { content, .. } => {
                 user_or_separator(&mut prompt);
-                prompt += prompt!("<tool_result>{content}</tool_result>");
+                prompt += tool_result(content);
             }
             InputMessage::Assistant {
                 content,

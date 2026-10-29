@@ -43,11 +43,16 @@ pub struct RenderedPrompt {
     /// UTF-8 byte offsets after the BOS token and after each normalized message,
     /// before any generation header.
     pub message_boundaries: Vec<usize>,
+    /// UTF-8 byte offsets of advisory reusable-prefix boundaries.
+    pub checkpoint_hints: Vec<usize>,
 }
 
 /// Failure to encode a conversation.
 #[derive(Debug, thiserror::Error)]
 pub enum EncodingError {
+    /// Reasoning effort scores must lie between 1 and 100.
+    #[error("invalid reasoning effort score: {0}")]
+    InvalidReasoningEffortScore(u8),
     /// A failure of the attached tokenizer to encode the rendered prompt.
     #[error("failed to encode conversation: {0}")]
     Encode(String),

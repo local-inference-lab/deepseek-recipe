@@ -13,7 +13,7 @@ pub use processor::StreamProcessor;
 mod decoder;
 mod inference;
 mod logprobs;
-mod output_parser;
+pub mod output_parser;
 mod processor;
 
 /// An error that ends stream processing before normal completion.

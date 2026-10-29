@@ -32,6 +32,16 @@ const ASSISTANT_SPECIAL_TOKENS: &[SpecialToken] = &[
     SpecialToken::PolygonEnd,
 ];
 
+fn tool_result(content: &Prompt) -> Prompt {
+    let mut content = content.clone();
+    let trailing = content.take_trailing_checkpoints();
+    let mut result = prompt!("<tool_result>{content}</tool_result>");
+    for _ in 0..trailing {
+        result.mark_checkpoint(result.as_str().len());
+    }
+    result
+}
+
 /// Parse tool call arguments into the object whose entries become DSML
 /// parameters. Arguments that are not a JSON object become one `arguments`
 /// string parameter holding the original text.
@@ -131,12 +141,14 @@ fn into_rendered_prompt(
     message_boundaries: Vec<usize>,
 ) -> RenderedPrompt {
     let image_sources = collect_image_sources(messages);
+    let checkpoint_hints = prompt.checkpoint_hints().to_vec();
     let (prompt, special_ranges) = prompt.into_parts();
     RenderedPrompt {
         prompt,
         special_ranges,
         image_sources,
         message_boundaries,
+        checkpoint_hints,
     }
 }
 

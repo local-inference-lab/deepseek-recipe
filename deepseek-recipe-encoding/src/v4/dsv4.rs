@@ -10,7 +10,7 @@ use deepseek_recipe_core::tools::{ToolChoice, ToolDefinition};
 
 use super::{
     EncodingComponents, into_rendered_prompt, is_prefix_continuation, parse_tool_call_arguments,
-    renders_tool_prompt, tool_call_instructions, tool_definition_json,
+    renders_tool_prompt, tool_call_instructions, tool_definition_json, tool_result,
 };
 use crate::{EncodingError, PromptEncoding, RenderedPrompt, TokenizerEncoder};
 
@@ -193,7 +193,7 @@ impl PromptEncoding for DeepseekV4Encoding {
                     } else {
                         prompt += prompt!("{}", self.components.special(SpecialToken::User));
                     }
-                    prompt += prompt!("<tool_result>{content}</tool_result>");
+                    prompt += tool_result(content);
                 }
                 InputMessage::LatestReminder { content } => {
                     let latest_reminder = self.components.special(SpecialToken::LatestReminder);

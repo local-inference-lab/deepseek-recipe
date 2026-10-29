@@ -93,3 +93,66 @@ fn tool_result_boundaries_follow_call_order_and_include_the_closing_wrapper() {
         );
     }
 }
+
+#[test]
+fn checkpoint_hints_follow_merged_users_and_reordered_tool_results() {
+    let marked = |text: &str, at: usize| {
+        let mut prompt = Prompt::plain(text);
+        prompt.mark_checkpoint(at);
+        prompt
+    };
+    let conversation = Conversation {
+        messages: vec![
+            InputMessage::User {
+                content: marked("café", 3),
+                image_sources: vec![],
+            },
+            InputMessage::User {
+                content: marked("second", 3),
+                image_sources: vec![],
+            },
+            InputMessage::Assistant {
+                content: String::new(),
+                reasoning_content: None,
+                tool_calls: Some(vec![
+                    ToolCall {
+                        id: "a".into(),
+                        name: "lookup".into(),
+                        arguments: "{}".into(),
+                    },
+                    ToolCall {
+                        id: "b".into(),
+                        name: "lookup".into(),
+                        arguments: "{}".into(),
+                    },
+                ]),
+                prefix: false,
+            },
+            InputMessage::Tool {
+                content: marked("result B", 8),
+                image_sources: vec![],
+                tool_call_id: Some("b".into()),
+            },
+            InputMessage::Tool {
+                content: marked("result A", 6),
+                image_sources: vec![],
+                tool_call_id: Some("a".into()),
+            },
+        ],
+        thinking_mode: false,
+        ..Default::default()
+    };
+    for encoder in encoders() {
+        let rendered = encoder.render_conversation(&conversation);
+        let prefixes: Vec<_> = rendered
+            .checkpoint_hints
+            .iter()
+            .map(|&i| &rendered.prompt[..i])
+            .collect();
+        assert_eq!(prefixes.len(), 4);
+        assert!(prefixes[0].ends_with("caf"));
+        assert!(prefixes[1].ends_with("sec"));
+        assert!(prefixes[2].ends_with("result"));
+        assert!(prefixes[3].ends_with("result B</tool_result>"));
+    }
+}

@@ -26,6 +26,7 @@ use std::ops::{Add, AddAssign, Range};
 pub struct Prompt {
     text: String,
     special_ranges: Vec<Range<usize>>,
+    checkpoint_hints: Vec<usize>,
 }
 
 impl Prompt {
@@ -46,6 +47,7 @@ impl Prompt {
         Self {
             text: text.into(),
             special_ranges: Vec::new(),
+            checkpoint_hints: Vec::new(),
         }
     }
 
@@ -76,6 +78,12 @@ impl Prompt {
             return std::mem::take(self);
         }
         let text = self.text.split_off(at);
+        let mut checkpoint_hints = self
+            .checkpoint_hints
+            .split_off(self.checkpoint_hints.partition_point(|&offset| offset < at));
+        for offset in &mut checkpoint_hints {
+            *offset -= at;
+        }
         let mut special_ranges = self.special_ranges.split_off(
             self.special_ranges
                 .partition_point(|range| range.start < at),
@@ -94,7 +102,32 @@ impl Prompt {
         Self {
             text,
             special_ranges,
+            checkpoint_hints,
         }
+    }
+
+    /// Mark a UTF-8 byte offset as an advisory reusable-prefix boundary.
+    pub fn mark_checkpoint(&mut self, offset: usize) {
+        assert!(self.text.is_char_boundary(offset));
+        let index = self
+            .checkpoint_hints
+            .partition_point(|&value| value <= offset);
+        self.checkpoint_hints.insert(index, offset);
+    }
+
+    /// Remove and count boundaries at the end of the prompt.
+    pub fn take_trailing_checkpoints(&mut self) -> usize {
+        let start = self
+            .checkpoint_hints
+            .partition_point(|&offset| offset < self.text.len());
+        let count = self.checkpoint_hints.len() - start;
+        self.checkpoint_hints.truncate(start);
+        count
+    }
+
+    /// Return advisory reusable-prefix boundaries.
+    pub fn checkpoint_hints(&self) -> &[usize] {
+        &self.checkpoint_hints
     }
 
     /// Return the prompt text.
@@ -182,6 +215,8 @@ impl AddAssign<&Self> for Prompt {
     fn add_assign(&mut self, rhs: &Self) {
         let offset = self.text.len();
         self.text.push_str(&rhs.text);
+        self.checkpoint_hints
+            .extend(rhs.checkpoint_hints.iter().map(|&hint| hint + offset));
         self.special_ranges.extend(
             rhs.special_ranges
                 .iter()

@@ -80,7 +80,7 @@ impl Default for ParsingOptions {
 /// matches only a decoded special token. Text supplied without token
 /// boundaries has no such distinction, so its markers match by spelling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum ChunkKind {
+pub enum ChunkKind {
     /// Text without token boundaries, such as [`InferenceChunk::Text`]: every
     /// segment matches its spelling.
     ///
@@ -95,13 +95,13 @@ pub(super) enum ChunkKind {
 
 /// An incremental parser of model output. Each segment it returns assigns an
 /// [`OutputAction`] to a number of input bytes.
-pub(super) struct OutputParser {
+pub struct OutputParser {
     options: ParsingOptions,
     state: State,
 }
 
 impl OutputParser {
-    pub(super) fn new(mut options: ParsingOptions) -> Self {
+    pub fn new(mut options: ParsingOptions) -> Self {
         options
             .stop_sequences
             .retain(|sequence| !sequence.is_empty());
@@ -131,13 +131,13 @@ impl OutputParser {
     /// Parse the next source chunk, retaining a partial marker match for later
     /// input. `kind` decides whether the special-token segments of a marker
     /// match the chunk.
-    pub(super) fn feed(&mut self, content: &str, kind: ChunkKind) -> Vec<OutputActionSegment> {
+    pub fn feed(&mut self, content: &str, kind: ChunkKind) -> Vec<OutputActionSegment> {
         self.state.feed(content, kind, &self.options)
     }
 
     /// Return one segment for the bytes still buffered at the end of input,
     /// with the current stage's action for unmatched text.
-    pub(super) fn finish(self) -> Vec<OutputActionSegment> {
+    pub fn finish(self) -> Vec<OutputActionSegment> {
         self.state.finish().1
     }
 }
@@ -145,7 +145,7 @@ impl OutputParser {
 /// The kind of unexpected output that an [`OutputAction::SkipInvalid`] segment
 /// skips.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) enum InvalidTokenKind {
+pub enum InvalidTokenKind {
     /// A thinking-end token outside reasoning content.
     ExtraEndOfThinking,
     /// Output after a stop sequence or the end of the tool-call block.
@@ -160,7 +160,7 @@ pub(super) enum InvalidTokenKind {
 /// actions and writes a label once per segment, so an empty string value needs
 /// two distinct actions to produce both of its quotes.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) enum ArgumentsLabel {
+pub enum ArgumentsLabel {
     /// `{` before the first argument.
     ObjectOpen,
     /// `, ` before each later argument.
@@ -174,7 +174,7 @@ pub(super) enum ArgumentsLabel {
 }
 
 impl ArgumentsLabel {
-    pub(super) fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::ObjectOpen => "{",
             Self::ArgumentSeparator => ", ",
@@ -186,7 +186,7 @@ impl ArgumentsLabel {
 
 /// What the stream processor does with the bytes of one segment.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) enum OutputAction {
+pub enum OutputAction {
     /// Emit the bytes as answer content.
     Content,
     /// Emit one space for the bytes of each source chunk, for text around JSON
@@ -220,9 +220,9 @@ pub(super) enum OutputAction {
 
 /// An action and the number of input bytes it applies to.
 #[derive(Debug, Clone)]
-pub(super) struct OutputActionSegment {
-    pub(super) action: OutputAction,
-    pub(super) byte_len: usize,
+pub struct OutputActionSegment {
+    pub action: OutputAction,
+    pub byte_len: usize,
 }
 
 impl OutputActionSegment {
